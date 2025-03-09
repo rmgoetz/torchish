@@ -1,0 +1,11 @@
+.idea/
+*.egg-info*
+*__pycache__
+.vscode/*
+**/config.json
+**/build/**
+
+*sandbox/*
+
+test/*
+**/test/**
