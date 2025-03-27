@@ -25,7 +25,8 @@ if torch.cuda.is_available():
         is_python_module = False,
         build_directory = BUILD_DIR,
         extra_cflags = extra_flags + ["-DCOMPILED_WITH_CUDA"],
-        extra_ldflags = extra_ldflags
+        extra_ldflags = extra_ldflags,
+        extra_cuda_cflags = ["-lineinfo"]
     )
 else:
     raise Exception("CPU implementation not yet supported.")
