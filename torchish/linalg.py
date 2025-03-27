@@ -43,7 +43,7 @@ def outer_prod(
 
 
 def cross_prod(x: torch.Tensor) -> torch.Tensor:
-    """Computed the generalized cross product for dimensions greate than or equal to 2.
+    """Computes the generalized cross product for dimensions greate than or equal to 2.
 
     Args:
         x: A [*, D - 1, D] tensor of (D - 1)-many D-dimensional vectors for which to evaluate the cross product. Here *

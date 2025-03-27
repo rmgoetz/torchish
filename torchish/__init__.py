@@ -1,2 +1,2 @@
-from torchish.utils import *
-from torchish.linalg import *
+from .utils import *
+from .linalg import *
