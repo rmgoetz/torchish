@@ -36,7 +36,8 @@ def raycast(
     directions: torch.Tensor,
     vertices: torch.Tensor,
     faces: torch.Tensor,
-    vertex_batch: torch.Tensor
+    vertex_batch: torch.Tensor,
+    kernel: int = 0
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Casts rays onto a collection of triangulated facets, returning the distance to the first collision, and the normal
     of the facet hit.
@@ -47,6 +48,7 @@ def raycast(
         vertices: A [V, 3 (x, y, z)] of vertex locations
         faces: A [F, 3 (v0, v1, v2)] of triangulated facets
         vertex_batch: A [V] corresponding each vertex to a batch (B), must be consecutive and sorted
+        kernel: An option to choose the computation kernel. Defaults to 0.
 
     Returns:
         torch.Tensor: A [B, R] of distances from origins to nearest facet along ray direction. Values are infinite for
@@ -60,5 +62,6 @@ def raycast(
         directions,
         vertices,
         faces,
-        vertex_batch
+        vertex_batch,
+        kernel
     )   # [B, R], [B, R, 3 (x, y, z)]

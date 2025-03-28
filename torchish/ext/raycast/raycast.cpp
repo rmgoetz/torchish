@@ -8,7 +8,8 @@ std::vector<torch::Tensor> raycast(
     torch::Tensor directions,   // [B, R, 3 (x, y, z)]
     torch::Tensor vertices,     // [V, 3 (x, y, z)]
     torch::Tensor faces,        // [F, 3 (v0, v1, v2)]
-    torch::Tensor vertex_batch) // [V] consecutive and sorted
+    torch::Tensor vertex_batch, // [V] consecutive and sorted
+    int64_t kernel = 0)
 {
     CHECK_CONTIGUOUS(origins);
     CHECK_CONTIGUOUS(directions);
@@ -27,7 +28,7 @@ std::vector<torch::Tensor> raycast(
 
         const at::cuda::OptionalCUDAGuard device_guard(device_of(origins));
 
-        return raycast_CUDA(origins, directions, vertices, faces, vertex_batch);
+        return raycast_CUDA(origins, directions, vertices, faces, vertex_batch, kernel);
 
 #else
         AT_ERROR("Not compiled with GPU support");
