@@ -76,4 +76,4 @@ def raycast(
             vertices,
             faces,
             kernel
-        )   # [B, R], [B, R, 3 (x, y, z)]      
+        )   # [R], [R, 3 (x, y, z)]      

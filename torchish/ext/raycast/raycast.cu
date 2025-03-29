@@ -495,6 +495,10 @@ std::vector<torch::Tensor> raycast_CUDA(
     torch::Tensor distances = torch::full({B, R}, inf, origins.options());  // [B, R]
     torch::Tensor normals = torch::full({B, R, 3}, inf, origins.options()); // [B, R, 3 (x, y, z)]
 
+    // Normalize the directions tensor. In lieu of this we could always scale the distance results after
+    // calling the kernel, but that method risks introducing more numerical error.
+    torch::Tensor ndirections = directions / torch::linalg_norm(directions, 2, -1, true); // [B, R, 3 (x, y, z)]
+
     //
     dim3 threads(256, 1, 1);
     const int threads_per_block = threads.x * threads.y * threads.z;
@@ -506,7 +510,7 @@ std::vector<torch::Tensor> raycast_CUDA(
         // The most straighforward kernel
         raycast_kernel_simple<<<blocks, threads>>>(
             origins.packed_accessor32<float, 3>(),
-            directions.packed_accessor32<float, 3>(),
+            ndirections.packed_accessor32<float, 3>(),
             vertices.packed_accessor32<float, 2>(),
             faces.packed_accessor32<int64_t, 2>(),
             faces_per_batch.packed_accessor32<int64_t, 1>(),
@@ -523,7 +527,7 @@ std::vector<torch::Tensor> raycast_CUDA(
         // An experimental kernel
         raycast_kernel_exp1<<<blocks, threads>>>(
             origins.packed_accessor32<float, 3>(),
-            directions.packed_accessor32<float, 3>(),
+            ndirections.packed_accessor32<float, 3>(),
             vertices.packed_accessor32<float, 2>(),
             faces.packed_accessor32<int64_t, 2>(),
             faces_per_batch.packed_accessor32<int64_t, 1>(),
@@ -537,16 +541,16 @@ std::vector<torch::Tensor> raycast_CUDA(
     }
     else
     {
-        // Redefine block and thread dimensions for this kernel
-        dim3 threads(256, 1, 1);
-        const int threads_per_block = threads.x * threads.y * threads.z;
-        const int R_blocks = R / threads_per_block + ((R % threads_per_block != 0) ? 1 : 0);
-        dim3 blocks(B, R_blocks, 1);
+        // // Redefine block and thread dimensions for this kernel
+        // dim3 threads(256, 1, 1);
+        // const int threads_per_block = threads.x * threads.y * threads.z;
+        // const int R_blocks = R / threads_per_block + ((R % threads_per_block != 0) ? 1 : 0);
+        // dim3 blocks(B, R_blocks, 1);
 
         // An experimental kernel
         raycast_kernel_exp2<<<blocks, threads>>>(
             origins.packed_accessor32<float, 3>(),
-            directions.packed_accessor32<float, 3>(),
+            ndirections.packed_accessor32<float, 3>(),
             vertices.packed_accessor32<float, 2>(),
             faces.packed_accessor32<int64_t, 2>(),
             faces_per_batch.packed_accessor32<int64_t, 1>(),
