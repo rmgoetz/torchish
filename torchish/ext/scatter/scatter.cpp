@@ -300,5 +300,5 @@ static auto registry = torch::RegisterOperators()
                         //    .op("torch_scatter::scatter_sum", &scatter_sum)
                         //    .op("torch_scatter::scatter_mul", &scatter_mul)
                         //    .op("torch_scatter::scatter_mean", &scatter_mean)
-                           .op("cuda::scatter_min", &scatter_min)
-                           .op("cuda::scatter_max", &scatter_max);
+                           .op("cuda::scatter_min_fast", &scatter_min)
+                           .op("cuda::scatter_max_fast", &scatter_max);

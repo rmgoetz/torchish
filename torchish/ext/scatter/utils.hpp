@@ -10,7 +10,7 @@
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ *  furnished to do so, subject to the following conditions:
  * 
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
@@ -21,28 +21,19 @@
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ *  THE SOFTWARE.
  * 
  */
 
 #pragma once
 
-#ifdef _WIN32
-#if defined(torchscatter_EXPORTS)
-#define SCATTER_API __declspec(dllexport)
-#else
-#define SCATTER_API __declspec(dllimport)
-#endif
-#else
-#define SCATTER_API
-#endif
+#include <torch/script.h>
+#include <vector>
 
-#if (defined __cpp_inline_variables) || __cplusplus >= 201703L
-#define SCATTER_INLINE_VARIABLE inline
-#else
-#ifdef _MSC_VER
-#define SCATTER_INLINE_VARIABLE __declspec(selectany)
-#else
-#define SCATTER_INLINE_VARIABLE __attribute__((weak))
-#endif
-#endif
+inline std::vector<int64_t> list2vec(const c10::List<int64_t> list) {
+  std::vector<int64_t> result;
+  result.reserve(list.size());
+  for (size_t i = 0; i < list.size(); i++)
+    result.push_back(list[i]);
+  return result;
+}
