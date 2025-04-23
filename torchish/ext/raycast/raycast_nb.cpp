@@ -3,19 +3,17 @@
 #include "raycast.hpp"
 #include <c10/cuda/CUDAGuard.h>
 
-std::vector<torch::Tensor> raycast(
-    torch::Tensor origins,      // [B, R, 3 (x, y, z)]
-    torch::Tensor directions,   // [B, R, 3 (x, y, z)]
+std::vector<torch::Tensor> raycast_nb(
+    torch::Tensor origins,      // [R, 3 (x, y, z)]
+    torch::Tensor directions,   // [R, 3 (x, y, z)]
     torch::Tensor vertices,     // [V, 3 (x, y, z)]
     torch::Tensor faces,        // [F, 3 (v0, v1, v2)]
-    torch::Tensor vertex_batch, // [V] consecutive and sorted
     int64_t kernel = 0)
 {
     CHECK_CONTIGUOUS(origins);
     CHECK_CONTIGUOUS(directions);
     CHECK_CONTIGUOUS(vertices);
     CHECK_CONTIGUOUS(faces);
-    CHECK_CONTIGUOUS(vertex_batch);
 
     if (origins.is_cuda())
     {
@@ -24,11 +22,10 @@ std::vector<torch::Tensor> raycast(
         CHECK_CUDA(directions);
         CHECK_CUDA(vertices);
         CHECK_CUDA(faces);
-        CHECK_CUDA(vertex_batch);
 
         const at::cuda::OptionalCUDAGuard device_guard(device_of(origins));
 
-        return raycast_CUDA(origins, directions, vertices, faces, vertex_batch, kernel);
+        return raycast_CUDA_nb(origins, directions, vertices, faces, kernel);
 
 #else
         AT_ERROR("Not compiled with GPU support");
@@ -40,4 +37,4 @@ std::vector<torch::Tensor> raycast(
     }
 }
 
-static auto registry = torch::RegisterOperators("cuda::raycast", &raycast);
+static auto registry = torch::RegisterOperators("cuda::raycast_nb", &raycast_nb);
