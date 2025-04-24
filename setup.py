@@ -43,8 +43,6 @@ def get_extensions():
         define_macros = [('WITH_PYTHON', None)]
         undef_macros = []
 
-        print(f"{main = } {suffix = }")
-
         if sys.platform == 'win32':
             define_macros += [('torchish_EXPORTS', None)]
 
@@ -93,18 +91,6 @@ def get_extensions():
             for file in os.listdir(directory):
                 if osp.isfile(osp.join(directory, file)) and file.endswith(file_extension):
                     sources += [osp.join(directory, file)]
-        
-        print(f"{sources = }")
-
-        # path = osp.join(extensions_dir, 'cpu', f'{name}_cpu.cpp')
-        # if osp.exists(path):
-        #     sources += [path]
-        #     print(f"cpp {sources = }")
-
-        # path = osp.join(extensions_dir, 'cuda', f'{name}_cuda.cu')
-        # if suffix == 'cuda' and osp.exists(path):
-        #     sources += [path]
-        #     print(f"cuda {sources = }")
 
         Extension = CppExtension if suffix == 'cpu' else CUDAExtension
         extension = Extension(
