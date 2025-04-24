@@ -1,6 +1,10 @@
 import torch
 from torchish.utils import left_broadcast_shape, interpret_as_tensor
 
+__all__ = [
+    'outer_prod',
+    'cross_prod'
+]
 
 def outer_prod(
     x: torch.Tensor,
