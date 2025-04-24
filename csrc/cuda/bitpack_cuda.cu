@@ -156,7 +156,7 @@ torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel = 0)
     if (kernel == 0)
     {
         const uint32_t writes_per_block = THREADS_PER_BLOCK * WRITES_PER_THREAD;
-        dim3 threads(256, 1, 1);
+        dim3 threads(THREADS_PER_BLOCK, 1, 1);
         const uint32_t bNum = (N * K) / writes_per_block + (((N * K) % writes_per_block) != 0 ? 1 : 0);
         dim3 blocks(bNum, 1, 1);
 
@@ -176,7 +176,7 @@ torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel = 0)
         {
             compact = torch::cat({compact, torch::zeros({writes_per_block - ((N * K) % writes_per_block)}, compact.options())}, 0).contiguous(); // [N * K + pad]
         }
-        dim3 threads(256, 1, 1);
+        dim3 threads(THREADS_PER_BLOCK, 1, 1);
         const uint32_t bNum = (N * K) / writes_per_block + (((N * K) % writes_per_block) != 0 ? 1 : 0);
         dim3 blocks(bNum, 1, 1);
 
