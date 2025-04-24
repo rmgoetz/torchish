@@ -1,0 +1,1 @@
+ncu -f -o <profile name> --nvtx --call-stack --set full --import-source on <path to python binary> <test file>
