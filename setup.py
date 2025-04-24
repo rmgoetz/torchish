@@ -1,77 +1,133 @@
-from typing import List, Tuple
+import glob
 import os
-import re
-import fnmatch
-from pathlib import Path
-from setuptools import setup, find_packages
-from setuptools.command.build_py import build_py as build_py_orig
+import os.path as osp
+import platform
+import sys
+from itertools import product
+import torch
+from setuptools import find_packages, setup
+from torch.__config__ import parallel_info
+from torch.utils.cpp_extension import (CUDA_HOME, BuildExtension, CppExtension,
+                                       CUDAExtension)
 
-VERSION = open('VERSION').read()
-exluded = ['*_nb.py', '*.pyc']
-ABS_DIR = os.path.dirname(os.path.abspath(__file__))
-EXT_ROOT_DIR = os.path.normpath(os.path.join(ABS_DIR, "torchish/ext"))
+__version__ = open('VERSION').read()
+URL = 'https://github.com/rmgoetz/torchish'
 
-class build_py(build_py_orig):
-    """A hack to work around the fact that exclude package data is not understood properly by build.
-    """
-    def find_package_modules(self, package, package_dir):
-        modules = super().find_package_modules(package, package_dir)
-        return [
-            (pkg, mod, file)
-            for (pkg, mod, file) in modules
-            if not any(fnmatch.fnmatchcase(file, pat=pattern) for pattern in exluded)
-        ]
+COMPILED_WITH_CUDA = False
+if torch.cuda.is_available():
+    COMPILED_WITH_CUDA = CUDA_HOME is not None or torch.version.hip
+suffices = ['cpu', 'cuda'] if COMPILED_WITH_CUDA else ['cpu']
+if os.getenv('FORCE_CUDA', '0') == '1':
+    suffices = ['cuda', 'cpu']
+if os.getenv('FORCE_ONLY_CUDA', '0') == '1':
+    suffices = ['cuda']
+if os.getenv('FORCE_ONLY_CPU', '0') == '1':
+    suffices = ['cpu']
 
-def ext_data_files() -> List[Tuple[str, List[str]]]:
-    """Generates a data file list for the extensions subdirectory.
-    """
-    ext_dirs = [EXT_ROOT_DIR] + list_subdirectories(EXT_ROOT_DIR)
-    ext_import_names = convert_to_module_import(ext_dirs)
-    data_files = []
-    for dirpath, imp_name in zip(ext_dirs, ext_import_names):
-        cpp_cuda_files = grab_cpp_cuda_files(dirpath)
-        data_files.append((imp_name, cpp_cuda_files))
-    return data_files
+BUILD_DOCS = os.getenv('BUILD_DOCS', '0') == '1'
+WITH_SYMBOLS = os.getenv('WITH_SYMBOLS', '0') == '1'
 
-def list_subdirectories(root_dir: str) -> List[str]:
-    """List all subdirectories in a root directory
-    """
-    subdirectories = []
-    for dirpath, dirnames, _ in os.walk(root_dir):
-        for dirname in dirnames:
-            subdirectories.append(os.path.join(dirpath, dirname))
-    return subdirectories
 
-def grab_cpp_cuda_files(dirpath: str) -> List[str]:
-    """Lists all C++/CUDA related files in a directory
-    """
-    # glob is straight trash, so please excuse this
-    file_extensions = ["*.cpp", "*.cu", "*.hpp", "*.cuh"]
-    file_list = []
-    for ext in file_extensions:
-        files = list(Path(dirpath).glob(ext))
-        files = [os.path.normpath(os.path.join(str(f))) for f in files]
-        file_list += files
-    return file_list
+def get_extensions():
+    extensions = []
 
-def convert_to_module_import(paths: List[str]) -> List[str]:
-    """Converts an absolute directory path to an import path for this torchish module.
-    """
-    period_ABS_DIR = ABS_DIR.replace("\\", ".").replace("/", ".")
-    import_names = []
-    for path in paths:
-        period_path = path.replace("\\", ".").replace("/", ".")
-        imp_name = re.sub(f'^{period_ABS_DIR}', '', period_path)[1:]
-        import_names.append(imp_name)
-    return import_names
+    extensions_dir = osp.join('csrc')
 
+    # main files will be cpp files in the top level of csrc
+    main_files = glob.glob(osp.join(extensions_dir, '*.cpp'))
+
+    # remove generated 'hip' files, in case of rebuilds
+    main_files = [path for path in main_files if 'hip' not in path]
+
+    for main, suffix in product(main_files, suffices):
+        define_macros = [('WITH_PYTHON', None)]
+        undef_macros = []
+
+        if sys.platform == 'win32':
+            define_macros += [('torchish_EXPORTS', None)]
+
+        extra_compile_args = {'cxx': ['-O2']}
+
+        extra_link_args = [] if WITH_SYMBOLS else ['-s']
+
+        info = parallel_info()
+        if ('backend: OpenMP' in info and 'OpenMP not found' not in info
+                and sys.platform != 'darwin'):
+            extra_compile_args['cxx'] += ['-DAT_PARALLEL_OPENMP']
+            if sys.platform == 'win32':
+                extra_compile_args['cxx'] += ['/openmp']
+            else:
+                extra_compile_args['cxx'] += ['-fopenmp']
+        else:
+            print('Compiling without OpenMP...')
+
+        # Compile for mac arm64
+        if sys.platform == 'darwin':
+            extra_compile_args['cxx'] += ['-D_LIBCPP_DISABLE_AVAILABILITY']
+            if platform.machine == 'arm64':
+                extra_compile_args['cxx'] += ['-arch', 'arm64']
+                extra_link_args += ['-arch', 'arm64']
+
+        if suffix == 'cuda':
+            define_macros += [('COMPILED_WITH_CUDA', None)]
+            nvcc_flags = os.getenv('NVCC_FLAGS', '')
+            nvcc_flags = [] if nvcc_flags == '' else nvcc_flags.split(' ')
+            nvcc_flags += ['-O2']
+            if torch.version.hip:
+                # USE_ROCM was added to later versions of PyTorch.
+                # Define here to support older PyTorch versions as well:
+                define_macros += [('USE_ROCM', None)]
+                undef_macros += ['__HIP_NO_HALF_CONVERSIONS__']
+            else:
+                nvcc_flags += ['--expt-relaxed-constexpr']
+            extra_compile_args['nvcc'] = nvcc_flags
+
+        name = main.split(os.sep)[-1][:-4]
+        sources = [main]
+
+        directory = osp.join(extensions_dir, suffix)
+        file_extension = ".cu" if suffix == "cuda" else ".cpp"
+        if osp.isdir(directory) and name != "version":
+            for file in os.listdir(directory):
+                if osp.isfile(osp.join(directory, file)) and file.endswith(file_extension):
+                    sources += [osp.join(directory, file)]
+
+        Extension = CppExtension if suffix == 'cpu' else CUDAExtension
+        extension = Extension(
+            f'torchish._{name}_{suffix}',
+            sources,
+            include_dirs=[extensions_dir],
+            define_macros=define_macros,
+            undef_macros=undef_macros,
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args,
+        )
+        extensions += [extension]
+
+    return extensions
+
+
+install_requires = []
+
+
+# work-around hipify abs paths
+include_package_data = True
+if torch.cuda.is_available() and torch.version.hip:
+    include_package_data = False
 
 setup(
-    name = "torchish",
-    author = "Ryan Goetz",
-    version = VERSION,
-    packages = find_packages(exclude = []),
-    include_package_data = True,
-    cmdclass = {"build_py" : build_py},
-    data_files = ext_data_files()
+    name='torchish',
+    version=__version__,
+    description='Ecclectic PyTorch Extension Library',
+    author='Ryan Goetz',
+    url=URL,
+    python_requires='>=3.8',
+    install_requires=install_requires,
+    ext_modules=get_extensions() if not BUILD_DOCS else [],
+    cmdclass={
+        'build_ext':
+        BuildExtension.with_options(no_python_abi_suffix=True, use_ninja=False)
+    },
+    packages=find_packages(),
+    include_package_data=include_package_data,
 )

@@ -1,11 +1,26 @@
+__pycache__/
+build/
+dist/
+.cache/
+.eggs/
+*.egg-info/
+.coverage
+*.so
+*.aux
+*.log
+*.pdf
+*.hip
+*.pyd
+*_hip.cpp
+hip
+
+
 .idea/
-*.egg-info*
 *__pycache__
 .vscode/*
-**/config.json
 **/build/**
 
 *sandbox/*
 
 test/*
-**/test/**
+!test/ncu-command.txt

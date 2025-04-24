@@ -1,5 +1,5 @@
 
-#include "bitpack.hpp"
+#include "bitpack_cuda.hpp"
 #include <stdexcept>
 
 // The number of threads to launch a block with in the lineread kernel
@@ -126,7 +126,7 @@ __global__ void bitpack_kernel_vectorized(
     reinterpret_cast<uint16_t *>(compact)[flat_index] = packed;
 }
 
-torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel)
+torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel = 0)
 {
     using namespace torch::indexing;
 

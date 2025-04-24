@@ -1,6 +1,6 @@
 
-#include "raycast.hpp"
-#include "../vector_f.cuh"
+#include "raycast_cuda.hpp"
+#include "vector_f.cuh"
 
 __global__ void raycast_kernel_nb_simple(
     torch::PackedTensorAccessor32<float, 2> origins,           // [R, 3 (x, y, z)]
