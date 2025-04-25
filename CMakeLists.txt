@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 project(torchish)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED)
-set(TORCHISH_VERSION 0.4)
+set(TORCHISH_VERSION 0.5)
 
 option(COMPILED_WITH_CUDA "Enable CUDA support" OFF)
 option(WITH_PYTHON "Link to Python when building" ON)

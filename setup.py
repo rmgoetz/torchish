@@ -3,9 +3,11 @@ import os
 import os.path as osp
 import platform
 import sys
+import fnmatch
 from itertools import product
 import torch
 from setuptools import find_packages, setup
+from setuptools.command.build_py import build_py as build_py_original
 from torch.__config__ import parallel_info
 from torch.utils.cpp_extension import (CUDA_HOME, BuildExtension, CppExtension,
                                        CUDAExtension)
@@ -27,8 +29,22 @@ if os.getenv('FORCE_ONLY_CPU', '0') == '1':
 BUILD_DOCS = os.getenv('BUILD_DOCS', '0') == '1'
 WITH_SYMBOLS = os.getenv('WITH_SYMBOLS', '0') == '1'
 
+class build_py(build_py_original):
+    '''A hack to work around exclude_package_data not being properly understood by build
+    '''
+    def find_package_modules(self, package, package_dir):
+        excluded_extensions = ["*_nb.py", "*.pyc"]
+        modules = super().find_package_modules(package, package_dir)
+        return [
+            (pkg, mod, file)
+            for (pkg, mod, file) in modules
+            if not any(fnmatch.fnmatchcase(file, pat = pattern) for pattern in excluded_extensions)
+        ]
+
 
 def get_extensions():
+    '''Manage the C++/CUDA extensions
+    '''
     extensions = []
 
     extensions_dir = osp.join('csrc')
@@ -125,9 +141,10 @@ setup(
     install_requires=install_requires,
     ext_modules=get_extensions() if not BUILD_DOCS else [],
     cmdclass={
+        'build_py' : build_py,
         'build_ext':
         BuildExtension.with_options(no_python_abi_suffix=True, use_ninja=False)
     },
-    packages=find_packages(),
+    packages=find_packages(exclude = ["torchish.jit.*"]),
     include_package_data=include_package_data,
 )

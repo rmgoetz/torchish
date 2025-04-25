@@ -13,8 +13,8 @@ def outer_prod(
     """Computes the outer product of vectors in a batched fashion.
 
     Args:
-        x (torch.Tensor): A [*, D1] tensor of D1-dimensional vectors, where * is an arbitrary sequence of leading dimensions.
-        y (torch.Tensor): A [**, D2] tensor of D2-dimensional vectors, where ** is an arbitrary sequence of leading dimensions.
+        x: A [*, D1] tensor of D1-dimensional vectors, where * is an arbitrary sequence of leading dimensions.
+        y: A [**, D2] tensor of D2-dimensional vectors, where ** is an arbitrary sequence of leading dimensions.
 
     Returns:
         torch.Tensor: A [***, D1, D2] tensor of the outer product of x with y, where *** is the resultant shape of left-broadcasting

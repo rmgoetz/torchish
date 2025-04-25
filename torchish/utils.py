@@ -32,7 +32,7 @@ def interpret_as_tensor(
         contiguous: If True, the output is guaranteed to be contiguous. Defaults to False.
 
     Returns:
-        torch.Tensor: 
+        torch.Tensor: The input as a tensor of specified shape.
     """
 
     # If the target shape was accidentally given as an integer instead of a tuple (remember commas!)
@@ -145,8 +145,8 @@ def left_broadcast_shape(
     left" to make the number of dimensions agree.
 
     Args:
-        x (torch.Tensor): A [*] shaped tensor
-        y (torch.Tensor): A [**] shaped tensor
+        x: A [*] shaped tensor
+        y: A [**] shaped tensor
 
     Returns:
         torch.Tensor: A [ndims] tensor
@@ -186,10 +186,10 @@ def consecutive_index_remap(X: torch.Tensor) -> torch.Tensor:
      [ 2,  4,  0,  1,  3]]
 
     Args:
-        X (torch.Tensor): A [*, P] tensor of integer types, where * denotes arbitrary leading dimensions.
+        X: A [*, P] tensor of integer types, where * denotes arbitrary leading dimensions.
 
     Returns:
-        A [*, P] tensor of remapped integers.
+        torch.Tensor: A [*, P] tensor of remapped integers.
     """
 
     # Flatten all leading dimensions of X
