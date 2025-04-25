@@ -1,9 +1,32 @@
 
-#include "bitunpack_cuda.hpp"
-#include "macros.hpp"
+#include "bitunpack.hpp"
 #include <stdexcept>
 
 constexpr uint32_t THREADS_PER_BLOCK = 256;
+
+#define AT_DISPATCH_OUTPUT_DATATYPES(dtype, ...)                     \
+    do                                                               \
+    {                                                                \
+        switch (dtype)                                               \
+        {                                                            \
+        case torch::kBool:                                           \
+        {                                                            \
+            using OUTPUT_TYPE = bool;                                \
+            static constexpr at::ScalarType PT_DTYPE = torch::kBool; \
+            __VA_ARGS__();                                           \
+            break;                                                   \
+        }                                                            \
+        case torch::kUInt8:                                          \
+        {                                                            \
+            using OUTPUT_TYPE = uint8_t;                             \
+            constexpr at::ScalarType PT_DTYPE = torch::kUInt8;       \
+            __VA_ARGS__();                                           \
+            break;                                                   \
+        }                                                            \
+        default:                                                     \
+            throw std::invalid_argument("Unsupported dtype");        \
+        }                                                            \
+    } while (0)
 
 template <typename type>
 __global__ void naive_unpack_kernel(
@@ -69,7 +92,7 @@ __global__ void unpack_kernel<bool>(
     // Read in 8 values with one uint8
     uint8_t read = bitpacked[flat_index];
 
-    // Convert to a 64 bit value so we can later reinterpret as 8 8-bit values.
+    // Convert to a 64 bit value so we can later reinterpret at 8 8-bit values.
     // CUDA is little-endian, so the binary representation that we read in:
     //      ABCDEFGH
     // needs to be converted to:
@@ -111,7 +134,7 @@ __global__ void unpack_kernel<uint8_t>(
     // Read in 8 values with one uint8
     uint8_t read = bitpacked[flat_index];
 
-    // Convert to a 64 bit value so we can later reinterpret as 8 8-bit values.
+    // Convert to a 64 bit value so we can later reinterpret at 8 8-bit values.
     // CUDA is little-endian, so the binary representation that we read in:
     //      ABCDEFGH
     // needs to be converted to:
@@ -212,8 +235,8 @@ torch::Tensor bitunpack_2d_CUDA(
     auto [P, K] = check_inputs(bitpacked, N, M, dtype);
     torch::Tensor unpacked;
 
-    AT_DISPATCH_OUTPUT_BOOL_OR_UINT8(dtype, [&]
-                                     {
+    AT_DISPATCH_OUTPUT_DATATYPES(dtype, [&]
+                                 {
         // Instantiate the output
         constexpr uint32_t writes_per_block = THREADS_PER_BLOCK * 8;
         unpacked = initialize_output_tensor<PT_DTYPE>(bitpacked.device(), P, K, writes_per_block);
@@ -223,15 +246,15 @@ torch::Tensor bitunpack_2d_CUDA(
         dim3 blocks(bNum, 1, 1);
     
         uint8_t* bitpacked_ptr = bitpacked.data_ptr<uint8_t>();
-        _TYPE* unpacked_ptr = unpacked.data_ptr<_TYPE>();
-
+        OUTPUT_TYPE* unpacked_ptr = unpacked.data_ptr<OUTPUT_TYPE>(); //get_unpacked_ptr<(OUTPUT_TYPE == torch::kBool)>(unpacked); // unpacked.data_ptr<bool>();
+    
         if (kernel == 0)
         {
-            unpack_kernel<_TYPE><<<blocks, threads>>>(bitpacked_ptr, unpacked_ptr);
+            unpack_kernel<OUTPUT_TYPE><<<blocks, threads>>>(bitpacked_ptr, unpacked_ptr);
         }
         else
         {
-            naive_unpack_kernel<_TYPE><<<blocks, threads>>>(bitpacked_ptr, unpacked_ptr);
+            naive_unpack_kernel<OUTPUT_TYPE><<<blocks, threads>>>(bitpacked_ptr, unpacked_ptr);
         } });
 
     // Reshape and slice off unwanted bits
