@@ -25,3 +25,6 @@ def raycast_nb_placeholder(
 
 def bitpack_2d_placeholder(input: torch.Tensor, kernel: int) -> torch.Tensor:
     raise ImportError
+
+def bitunpack_2d_placeholder(packed: torch.Tensor, N: int, M: int, kernel: int) -> torch.Tensor:
+    raise ImportError

@@ -31,3 +31,9 @@ TORCHISH_API std::vector<torch::Tensor> raycast_nb(
 TORCHISH_API torch::Tensor bitpack_2d(
     torch::Tensor input, // [N, M]
     int64_t kernel);
+
+TORCHISH_API torch::Tensor bitunpack_2d(
+    torch::Tensor bitpacked, // [P, K]
+    int64_t N,
+    int64_t M,
+    int64_t kernel);

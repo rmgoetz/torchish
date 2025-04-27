@@ -1,7 +1,8 @@
 import torch
 
 __all__ = [
-    'bitpack_2d'
+    'bitpack_2d',
+    'bitunpack_2d'
 ]
 
 def bitpack_2d(input: torch.Tensor, kernel: int = 0) -> torch.Tensor:
@@ -12,7 +13,20 @@ def bitpack_2d(input: torch.Tensor, kernel: int = 0) -> torch.Tensor:
         input: A [N, M] boolean tensor.
 
     Returns:
-        torch.Tensor: A [N, K] tensor with dtype uint8
+        torch.Tensor: A [N, K] tensor with dtype uint8.
     """
-
     return torch.ops.torchish.bitpack_2d(input, kernel) # [K, M]  
+
+def bitunpack_2d(packed: torch.Tensor, N: int, M: int, kernel: int = 0) -> torch.Tensor:
+    """Unpacks a @D bit-packed bool-like tensor of uint8 into a proper boolean tensor.
+
+    Args:
+        packed: A 2D bitpacked tensor of dtype uint8.
+        N: The desired row dimension of the output (first N rows are kept, rest are dropped).
+        M: The desired column dimension of the output (first M columns are kept, rest are dropped).
+        kernel: An optional argument to select the kernel used in computation. Defaults to 0.
+
+    Returns:
+        torch.Tensor: A [N, M] boolean tensor.
+    """
+    return torch.ops.torchish.bitunpack_2d(packed, N, M, kernel)
