@@ -10,6 +10,7 @@
 #ifdef COMPILED_WITH_CUDA
 #include "cuda/raycast_cuda.hpp"
 #include "cuda/bitpack_cuda.hpp"
+#include "cuda/bitunpack_cuda.hpp"
 #include <c10/cuda/CUDAGuard.h>
 #endif
 
@@ -114,7 +115,32 @@ TORCHISH_API torch::Tensor bitpack_2d(torch::Tensor input, int64_t kernel = 0)
     }
 }
 
+TORCHISH_API torch::Tensor bitunpack_2d(
+    torch::Tensor bitpacked_tensor, // [N*, K]
+    int64_t N,
+    int64_t M,
+    int64_t kernel = 0)
+{
+    CHECK_CONTIGUOUS(bitpacked_tensor);
+
+    if (bitpacked_tensor.is_cuda())
+    {
+#ifdef COMPILED_WITH_CUDA
+
+        return bitunpack_2d_CUDA(bitpacked_tensor, N, M, kernel);
+
+#else
+        AT_ERROR("Not compiled with GPU support");
+#endif
+    }
+    else
+    {
+        AT_ERROR("No CPU implementation.");
+    }
+}
+
 static auto registry = torch::RegisterOperators()
                            .op("torchish::raycast", &raycast)
                            .op("torchish::raycast_nb", &raycast_nb)
-                           .op("torchish::bitpack_2d", &bitpack_2d);
+                           .op("torchish::bitpack_2d", &bitpack_2d)
+                           .op("torchish::bitunpack_2d", &bitunpack_2d);

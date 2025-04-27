@@ -26,8 +26,9 @@ for library in ['_version', '_torchish']:
         torch.ops.torchish.raycast = raycast_placeholder
         torch.ops.torchish.raycast_nb = raycast_nb_placeholder
 
-        from .ops_placeholders import bitpack_2d_placeholder
+        from .ops_placeholders import bitpack_2d_placeholder, bitunpack_2d_placeholder
         torch.ops.torchish.bitpack_2d = bitpack_2d_placeholder
+        torch.ops.torchish.bitunpack_2d = bitunpack_2d_placeholder
 
 
 cuda_version = torch.ops.torchish.cuda_version()

@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <torch/script.h>
+#include <torch/torch.h>
 
 std::vector<torch::Tensor> raycast_CUDA(
     torch::Tensor origins,      // [B, R, 3 (x, y, z)]
