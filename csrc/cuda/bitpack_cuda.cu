@@ -1,5 +1,6 @@
 
 #include "bitpack_cuda.hpp"
+#include "macros.hpp"
 #include <stdexcept>
 
 // The number of threads to launch a block with in the lineread kernel
@@ -10,8 +11,9 @@ constexpr uint32_t THREADS_PER_BLOCK = 256;
 // GPU devices.
 constexpr uint32_t WRITES_PER_THREAD = 1;
 
+template <typename type>
 __global__ void bitpack_kernel_lineread(
-    const bool *input,
+    const type *input,
     uint8_t *compact,
     const int num_write_elems)
 {
@@ -92,8 +94,9 @@ __global__ void bitpack_kernel_lineread(
     }
 }
 
+template <typename type>
 __global__ void bitpack_kernel_vectorized(
-    bool *input,
+    type *input,
     uint8_t *compact)
 {
     // Thread's index in the full scope of the kernel
@@ -126,7 +129,7 @@ __global__ void bitpack_kernel_vectorized(
     reinterpret_cast<uint16_t *>(compact)[flat_index] = packed;
 }
 
-torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel = 0)
+torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel)
 {
     using namespace torch::indexing;
 
@@ -135,9 +138,9 @@ torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel = 0)
         throw std::invalid_argument("Input tensor must be 2-dimensional");
     }
 
-    if (input.dtype() != torch::kBool)
+    if ((input.scalar_type() != torch::kBool) && (input.scalar_type() != torch::kUInt8))
     {
-        throw std::invalid_argument("Input tensor must have dtype bool");
+        throw std::invalid_argument("Input tensor must have dtype bool or uint8");
     }
 
     uint32_t N = input.size(0);
@@ -153,41 +156,42 @@ torch::Tensor bitpack_2d_CUDA(torch::Tensor input, int64_t kernel = 0)
         input = torch::cat({input, torch::zeros({N, 8 - (M % 8)}, input.options())}, -1).contiguous(); // [N, 8*K]
     }
 
-    if (kernel == 0)
-    {
-        const uint32_t writes_per_block = THREADS_PER_BLOCK * WRITES_PER_THREAD;
-        dim3 threads(THREADS_PER_BLOCK, 1, 1);
-        const uint32_t bNum = (N * K) / writes_per_block + (((N * K) % writes_per_block) != 0 ? 1 : 0);
-        dim3 blocks(bNum, 1, 1);
-
-        auto input_ptr = input.data_ptr<bool>();
-        auto compact_ptr = compact.data_ptr<uint8_t>();
-
-        bitpack_kernel_lineread<<<blocks, threads>>>(input_ptr, compact_ptr, N * K);
-
-    }
-    else
-    {
-        // Reshape to 1-dimensional, then pad the output tensor to be a multiple of the number of writes per block
-        input = input.view({-1});     // [N * (8*K)]
-        compact = compact.view({-1}); // [N * K]
-        const uint32_t writes_per_block = THREADS_PER_BLOCK * 2;
-        if ((N * K) % (writes_per_block) != 0)
+    AT_DISPATCH_OUTPUT_BOOL_OR_UINT8(input.scalar_type(), [&]
+                                     {
+        if (kernel == 0)
         {
-            compact = torch::cat({compact, torch::zeros({writes_per_block - ((N * K) % writes_per_block)}, compact.options())}, 0).contiguous(); // [N * K + pad]
+            const uint32_t writes_per_block = THREADS_PER_BLOCK * WRITES_PER_THREAD;
+            dim3 threads(THREADS_PER_BLOCK, 1, 1);
+            const uint32_t bNum = (N * K) / writes_per_block + (((N * K) % writes_per_block) != 0 ? 1 : 0);
+            dim3 blocks(bNum, 1, 1);
+
+            _TYPE* input_ptr = input.data_ptr<_TYPE>();
+            uint8_t* compact_ptr = compact.data_ptr<uint8_t>();
+
+            bitpack_kernel_lineread<_TYPE><<<blocks, threads>>>(input_ptr, compact_ptr, N * K);
         }
-        dim3 threads(THREADS_PER_BLOCK, 1, 1);
-        const uint32_t bNum = (N * K) / writes_per_block + (((N * K) % writes_per_block) != 0 ? 1 : 0);
-        dim3 blocks(bNum, 1, 1);
+        else
+        {
+            // Reshape to 1-dimensional, then pad the output tensor to be a multiple of the number of writes per block
+            // input = input.view({-1});     // [N * (8*K)]
+            compact = compact.view({-1}); // [N * K]
+            const uint32_t writes_per_block = THREADS_PER_BLOCK * 2;
+            if ((N * K) % (writes_per_block) != 0)
+            {
+                compact = torch::cat({compact, torch::zeros({writes_per_block - ((N * K) % writes_per_block)}, compact.options())}, 0).contiguous(); // [N * K + pad]
+            }
+            dim3 threads(THREADS_PER_BLOCK, 1, 1);
+            const uint32_t bNum = (N * K) / writes_per_block + (((N * K) % writes_per_block) != 0 ? 1 : 0);
+            dim3 blocks(bNum, 1, 1);
 
-        auto input_ptr = input.data_ptr<bool>();
-        auto compact_ptr = compact.data_ptr<uint8_t>();
+            _TYPE* input_ptr = input.data_ptr<_TYPE>();
+            uint8_t* compact_ptr = compact.data_ptr<uint8_t>();
 
-        bitpack_kernel_vectorized<<<blocks, threads>>>(input_ptr, compact_ptr);
+            bitpack_kernel_vectorized<_TYPE><<<blocks, threads>>>(input_ptr, compact_ptr);
 
-        // Slice away the padding on the output and reshape
-        compact = compact.index({Slice(0, N * K)}).reshape({N, K}); // [N, K]
-    }
+            // Slice away the padding on the output and reshape
+            compact = compact.index({Slice(0, N * K)}).reshape({N, K}); // [N, K]
+        } });
 
     return compact; // [N, K]
 }

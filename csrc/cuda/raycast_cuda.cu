@@ -465,7 +465,7 @@ std::vector<torch::Tensor> raycast_CUDA(
     torch::Tensor vertices,     // [V, 3 (x, y, z)]
     torch::Tensor faces,        // [F, 3 (v0, v1, v2)]
     torch::Tensor vertex_batch, // [V] consecutive and sorted
-    int64_t kernel = 0)
+    int64_t kernel)
 {
     using namespace torch::indexing;
 
