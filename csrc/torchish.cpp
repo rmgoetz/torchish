@@ -30,7 +30,7 @@ TORCHISH_API std::vector<torch::Tensor> raycast(
     torch::Tensor vertices,     // [V, 3 (x, y, z)]
     torch::Tensor faces,        // [F, 3 (v0, v1, v2)]
     torch::Tensor vertex_batch, // [V] consecutive and sorted
-    int64_t kernel = 0)
+    int64_t kernel)
 {
     CHECK_CONTIGUOUS(origins);
     CHECK_CONTIGUOUS(directions);
@@ -66,7 +66,7 @@ TORCHISH_API std::vector<torch::Tensor> raycast_nb(
     torch::Tensor directions, // [R, 3 (x, y, z)]
     torch::Tensor vertices,   // [V, 3 (x, y, z)]
     torch::Tensor faces,      // [F, 3 (v0, v1, v2)]
-    int64_t kernel = 0)
+    int64_t kernel)
 {
     CHECK_CONTIGUOUS(origins);
     CHECK_CONTIGUOUS(directions);
@@ -95,7 +95,7 @@ TORCHISH_API std::vector<torch::Tensor> raycast_nb(
     }
 }
 
-TORCHISH_API torch::Tensor bitpack_2d(torch::Tensor input, int64_t kernel = 0)
+TORCHISH_API torch::Tensor bitpack_2d(torch::Tensor input, int64_t kernel)
 {
     CHECK_CONTIGUOUS(input);
 
@@ -119,7 +119,8 @@ TORCHISH_API torch::Tensor bitunpack_2d(
     torch::Tensor bitpacked_tensor, // [N*, K]
     int64_t N,
     int64_t M,
-    int64_t kernel = 0)
+    at::ScalarType dtype,
+    int64_t kernel)
 {
     CHECK_CONTIGUOUS(bitpacked_tensor);
 
@@ -127,7 +128,7 @@ TORCHISH_API torch::Tensor bitunpack_2d(
     {
 #ifdef COMPILED_WITH_CUDA
 
-        return bitunpack_2d_CUDA(bitpacked_tensor, N, M, kernel);
+        return bitunpack_2d_CUDA(bitpacked_tensor, N, M, dtype, kernel);
 
 #else
         AT_ERROR("Not compiled with GPU support");
