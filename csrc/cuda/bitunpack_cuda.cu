@@ -1,6 +1,6 @@
 
 #include "bitunpack_cuda.hpp"
-#include "macros.hpp"
+#include "bitpack_macros.hpp"
 #include <stdexcept>
 
 constexpr uint32_t THREADS_PER_BLOCK = 256;
@@ -69,7 +69,7 @@ __global__ void unpack_kernel<bool>(
     // Read in 8 values with one uint8
     uint8_t read = bitpacked[flat_index];
 
-    // Convert to a 64 bit value so we can later reinterpret at 8 8-bit values.
+    // Convert to a 64 bit value so we can later reinterpret as 8 8-bit values.
     // CUDA is little-endian, so the binary representation that we read in:
     //      ABCDEFGH
     // needs to be converted to:
