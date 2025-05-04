@@ -13,7 +13,7 @@ def raycast_placeholder(
     kernel: int
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     raise ImportError
-\
+
 def raycast_nb_placeholder(
     origins: torch.Tensor,
     directions: torch.Tensor,
