@@ -1,6 +1,6 @@
 
 #include "bitunpack_cuda.hpp"
-#include "macros.hpp"
+#include "bitpack_macros.hpp"
 #include <stdexcept>
 
 constexpr uint32_t THREADS_PER_BLOCK = 256;

@@ -1,9 +1,9 @@
 
 #include "bitpack_cuda.hpp"
-#include "macros.hpp"
+#include "bitpack_macros.hpp"
 #include <stdexcept>
 
-// The number of threads to launch a block with in the lineread kernel
+// The number of threads to launch a block with in the kernels
 constexpr uint32_t THREADS_PER_BLOCK = 256;
 
 // The number of times a thread will write to the output in the lineread kernel.
